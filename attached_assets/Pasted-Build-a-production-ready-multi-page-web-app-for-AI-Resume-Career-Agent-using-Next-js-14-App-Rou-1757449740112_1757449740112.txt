@@ -1,0 +1,88 @@
+Build a production-ready multi-page web app for “AI Resume & Career Agent” using Next.js 14 (App Router) + TypeScript, Tailwind CSS, shadcn/ui, Framer Motion, and Radix UI. Include responsive, accessible, SEO-optimized pages and modern animations.
+
+Core goals:
+- Marketing site + gated dashboard.
+- Payments: Stripe (USD for international) and Paymob (EGP for Egypt) with auto geo-detection + manual switch.
+- Auth: Email/Google via Clerk (or NextAuth if simpler). Public marketing pages, protected /dashboard.
+- Intake form with file upload (CV PDF/DOCX up to 10MB) and job ad text/URL; store files via UploadThing (or Supabase Storage).
+- Orders DB + webhook handlers (Stripe, Paymob) to mark payments as PAID.
+
+Pages & routes:
+- /               → Hero, How It Works (3 steps), Packages (3 cards), Why Choose Us, Testimonials, FAQ, Closing CTA.
+- /pricing        → Detailed pricing table + “Choose plan” buttons.
+- /checkout?plan=basic|standard|premium → Auto select gateway by country (EG→Paymob, else→Stripe) with manual toggle.
+- /order/success  → Thank you + Start Submission button → /dashboard/new-submission.
+- /order/cancel   → Retry payment page.
+- /dashboard      → Requires login. Shows orders, submissions, statuses.
+- /dashboard/new-submission → Intake form (file upload + fields).
+- /api/geo        → Return { countryCode, inferredGateway } by IP (edge runtime; fallback “stripe”).
+- /api/stripe/checkout, /api/stripe/webhook
+- /api/paymob/checkout, /api/paymob/webhook
+- /privacy, /terms, /sitemap.xml, /robots.txt
+
+Data model (Prisma + Postgres or Supabase):
+- users: id, email, name, createdAt
+- orders: id, userId, plan (BASIC|STANDARD|PREMIUM), amount, currency (USD|EGP), gateway (STRIPE|PAYMOB), status (PENDING|PAID|FAILED|CANCELED), externalId, countryCode, ip, createdAt
+- submissions: id, userId, orderId, roleTarget, industry, language (EN|AR|BOTH), jobAdUrl, jobAdText, notes, cvFileUrl, coverLetterFileUrl, status (NEW|IN_PROGRESS|QA|DELIVERED), createdAt
+
+Intake form (Zod validation):
+- roleTarget (required), industry (optional), language (enum EN/AR/BOTH), jobAdUrl OR jobAdText (require at least one), notes (optional)
+- cvFile (required; pdf|doc|docx, ≤10MB), coverLetterFile (optional same constraints)
+- On submit → create submission row + upload files to UploadThing path submissions/{userId}/{submissionId}/
+
+Payments & routing:
+- /checkout loads plan, calls /api/geo to guess gateway.
+- If countryCode == "EG" → default Paymob (EGP). Else → Stripe (USD).
+- Show manual switch component to override gateway (Stripe ↔ Paymob).
+- Stripe: Checkout Session with three price IDs (env: STRIPE_PRICE_BASIC_USD, STRIPE_PRICE_STANDARD_USD, STRIPE_PRICE_PREMIUM_USD). Webhook (checkout.session.completed) sets order.status=PAID.
+- Paymob: Implement auth token → order → payment key → iframe URL using env PAYMOB_*; webhook verifies HMAC, sets order.status=PAID.
+- Create order row before redirect; update externalId after session/order creation.
+
+Auth:
+- Clerk preferred (email + Google). If not logged in on /checkout, prompt login then return to chosen plan. Protect /dashboard and /dashboard/new-submission.
+
+Design / Look & Feel (Apple-like modern):
+- Visual tone: ultra-clean, high contrast, generous white space, large elegant typography, precise spacing. Avoid clutter.
+- Color palette: primary blue #1E73BE, surfaces white #FFFFFF, accents green #34A853 for success; subtle neutrals for text (#0E1111 / #475569). Support dark mode via media query, with tasteful neutrals.
+- Components: shadcn/ui cards, buttons (rounded-xl), inputs with clear focus rings. Use iconography (Lucide) sparingly and purposefully.
+- Motion & microinteractions (Framer Motion):
+  • Page transitions: fade + slight scale (duration 0.35s, ease “easeOut”), persistent navbar.
+  • Section reveals on scroll: 20–40px upward translate + fade in (staggered children).
+  • Buttons: subtle hover lift + shadow; pressed state scale 0.98.
+  • Pricing toggle highlight with spring.
+  • Smooth scroll for in-page anchors.
+- Hero: full-bleed, text-led, crisp headline and subheadline, one primary CTA, one secondary ghost button. Optional gentle gradient overlay; no heavy stock photos.
+- How It Works: 3-step horizontal on desktop, stacked on mobile; each card animates on view.
+- Packages: 3 cards with soft shadows; “Standard” marked as Most Popular (accent ring). Include price, features, CTA.
+- Testimonials: 3 quote cards with circular avatar placeholders and subtle background tint.
+- FAQ: accordion with smooth height animation; clear affordance.
+- Navbar: sticky, slight blur/glass on scroll, active link indicator; footer minimal with privacy/terms links.
+- Typography: Inter or SF-like system font; large hero H1 (~48–64 on desktop) and balanced line height.
+- Accessibility: color contrast AA+, focus outlines, aria labels, reduced motion respect.
+
+Content (copy placeholders):
+- Hero H1: “Land Your Next Job with a Resume That Gets Noticed”
+- Sub: “ATS-optimized resumes, LinkedIn rewrites, and tailored cover letters — delivered in 48 hours. English & Arabic.”
+- CTAs: “Get My Resume”, “See Pricing”
+- How It Works steps: Upload CV + Job Ad → AI + Expert Polish → Delivery in 48h
+- Packages: Basic (Resume), Standard (Resume + LinkedIn + 1 Cover Letter + 1 Revision), Premium (2 Resumes, LinkedIn, Multiple Cover Letters, Mock Interview Q&A, 1-week Support, 72h Priority)
+- Why Choose Us bullets: MENA-focused; Bilingual (EN/AR); 48h turnaround; ATS-optimized; Affordable
+- FAQ items: ATS compatibility; Arabic resumes; revisions; payment options; difference vs free tools
+
+Geo & wallets:
+- Add client-side detection for Apple Pay/Google Pay capability with Stripe.js (Payment Request API). If available and gateway=Stripe, show wallet buttons above card button; fallback to card.
+- Always keep manual gateway switch visible.
+
+Env & setup:
+- .env.example keys: CLERK (or NEXTAUTH), STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_* IDs, PAYMOB_API_KEY, PAYMOB_INTEGRATION_ID_CARD, PAYMOB_IFRAME_ID, PAYMOB_HMAC, DATABASE_URL, UPLOADTHING_SECRET/APP_ID, NEXT_PUBLIC_SITE_URL.
+- Include a README with setup steps (Stripe products + webhook, Paymob HMAC, DB migrate, UploadThing setup, Clerk).
+- Add dev “test mode” toggles for Stripe/Paymob sandbox; log webhooks only in dev.
+
+Quality:
+- Zod schemas on all API routes; proper error handling and toasts.
+- TypeScript strict; no any.
+- SEO: metadata, Open Graph, sitemap, robots.
+- i18n: simple EN/AR toggle; apply RTL when AR selected (dir="rtl"), mirror layout appropriately.
+
+Deliver:
+- A runnable Next.js app with above routes, components, and stubs wired, including minimal unit examples where helpful. Provide mock data where real keys are absent so pages render.
