@@ -47,8 +47,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Package pricing API
-  app.get('/api/packages', (req, res) => {
-    const { currency = 'USD' } = req.query;
+  app.get('/api/packages/:currency', (req, res) => {
+    const { currency = 'USD' } = req.params;
     
     const packages = Object.entries(PACKAGE_CONFIG).map(([key, config]) => ({
       id: key,
