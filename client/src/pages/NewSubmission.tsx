@@ -98,12 +98,19 @@ export default function NewSubmission() {
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, type: 'cv' | 'coverLetter') => {
+    console.log('File change event:', event);
+    console.log('Files:', event.target.files);
     const file = event.target.files?.[0] || null;
+    console.log('Selected file:', file);
     
     if (type === 'cv') {
+      console.log('Setting CV file:', file?.name);
       setCvFile(file);
-      setCvFileError(validateFile(file, true));
+      const error = validateFile(file, true);
+      console.log('CV file validation error:', error);
+      setCvFileError(error);
     } else {
+      console.log('Setting cover letter file:', file?.name);
       setCoverLetterFile(file);
     }
   };
@@ -289,7 +296,19 @@ export default function NewSubmission() {
                   <Label>Current CV/Resume *</Label>
                   <div 
                     className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
-                    onClick={() => document.getElementById('cv-file')?.click()}
+                    onClick={() => {
+                      console.log('Dropzone clicked for CV');
+                      const fileInput = document.getElementById('cv-file') as HTMLInputElement;
+                      if (fileInput) {
+                        console.log('Triggering file input click');
+                        fileInput.click();
+                      } else {
+                        console.error('CV file input not found');
+                      }
+                    }}
+                    onTouchStart={() => {
+                      console.log('Dropzone touch started for CV');
+                    }}
                     data-testid="dropzone-cv"
                   >
                     <UploadCloud className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -318,7 +337,19 @@ export default function NewSubmission() {
                   <Label>Current Cover Letter (Optional)</Label>
                   <div 
                     className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
-                    onClick={() => document.getElementById('cover-letter-file')?.click()}
+                    onClick={() => {
+                      console.log('Dropzone clicked for cover letter');
+                      const fileInput = document.getElementById('cover-letter-file') as HTMLInputElement;
+                      if (fileInput) {
+                        console.log('Triggering cover letter file input click');
+                        fileInput.click();
+                      } else {
+                        console.error('Cover letter file input not found');
+                      }
+                    }}
+                    onTouchStart={() => {
+                      console.log('Dropzone touch started for cover letter');
+                    }}
                     data-testid="dropzone-cover-letter"
                   >
                     <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
