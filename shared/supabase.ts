@@ -16,7 +16,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 // Storage bucket name for uploads
-export const STORAGE_BUCKET = 'uploads';
+export const STORAGE_BUCKET = 'resumes';
 
 // Helper function to create upload path
 export function createUploadPath(userId: string, submissionId: string, filename: string): string {

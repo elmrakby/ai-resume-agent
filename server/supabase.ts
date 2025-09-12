@@ -12,7 +12,7 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 });
 
 // Storage bucket configuration
-export const STORAGE_BUCKET = 'uploads';
+export const STORAGE_BUCKET = 'resumes';
 
 // Initialize storage bucket if it doesn't exist
 export async function initializeStorage() {
@@ -42,7 +42,7 @@ export async function initializeStorage() {
 
       if (error) {
         console.warn('Could not create storage bucket automatically:', error.message);
-        console.log('Please create the "uploads" bucket manually in your Supabase dashboard');
+        console.log(`Please create the "${STORAGE_BUCKET}" bucket manually in your Supabase dashboard`);
         console.log('Make sure to set it as private and allow the required MIME types');
       } else {
         console.log('Storage bucket created successfully');

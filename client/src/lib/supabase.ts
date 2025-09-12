@@ -16,7 +16,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 // Storage bucket name
-export const STORAGE_BUCKET = 'uploads';
+export const STORAGE_BUCKET = 'resumes';
 
 // File validation helpers
 export const ALLOWED_FILE_TYPES = ['pdf', 'docx', 'doc'];
