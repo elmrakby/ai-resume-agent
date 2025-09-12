@@ -22,11 +22,23 @@ const loadStripe = async () => {
     script.async = true;
     document.head.appendChild(script);
     
-    await new Promise((resolve) => {
+    await new Promise((resolve, reject) => {
       script.onload = resolve;
+      script.onerror = (error) => reject(new Error('Failed to load Stripe.js script'));
     });
   }
-  return (window as any).Stripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+  
+  const publicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+  if (!publicKey) {
+    throw new Error('Stripe public key not found in environment variables');
+  }
+  
+  const stripe = (window as any).Stripe(publicKey);
+  if (!stripe) {
+    throw new Error('Failed to initialize Stripe with public key');
+  }
+  
+  return stripe;
 };
 
 export default function Checkout() {
