@@ -129,9 +129,22 @@ export default function Checkout() {
           throw new Error(errorMsg);
         }
       } catch (error: any) {
+        // If we get a SecurityError (common in iframe environments), try direct navigation
+        if (error.name === 'SecurityError' || error.message?.includes('permission')) {
+          console.log('SecurityError detected, using direct window navigation...');
+          try {
+            // Direct navigation to Stripe checkout URL
+            const checkoutUrl = `https://checkout.stripe.com/c/pay/${data.sessionId}`;
+            window.location.href = checkoutUrl;
+            return; // Don't show error if navigation succeeds
+          } catch (navError) {
+            console.error('Navigation fallback failed:', navError);
+          }
+        }
+        
         console.error('Stripe redirect error:', error.message);
         toast({
-          title: "Payment Error",
+          title: "Payment Error", 
           description: error.message || "Unable to process payment. Please try again.",
           variant: "destructive",
         });
