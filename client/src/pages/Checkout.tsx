@@ -121,9 +121,11 @@ export default function Checkout() {
       return response.json();
     },
     onSuccess: async (data) => {
+      console.log('Stripe checkout response:', data);
       try {
         // For Replit environments, use direct navigation to avoid SecurityError
         if (data.url) {
+          console.log('Attempting direct navigation to:', data.url);
           window.location.href = data.url;
           return;
         }
@@ -144,6 +146,7 @@ export default function Checkout() {
         // If we get a SecurityError (common in iframe/Replit environments), provide manual redirect
         if (error.name === 'SecurityError' || error.message?.includes('permission')) {
           console.log('SecurityError detected, providing manual redirect option...');
+          console.log('Setting checkoutUrl to:', data.url);
           
           // Show user-friendly message with manual redirect option
           toast({
