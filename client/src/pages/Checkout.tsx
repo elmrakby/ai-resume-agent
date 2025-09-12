@@ -69,6 +69,7 @@ export default function Checkout() {
   
   const [selectedGateway, setSelectedGateway] = useState<'stripe' | 'paymob'>('stripe');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -129,27 +130,22 @@ export default function Checkout() {
           throw new Error(errorMsg);
         }
       } catch (error: any) {
-        // If we get a SecurityError (common in iframe/Replit environments), open in new tab
+        // If we get a SecurityError (common in iframe/Replit environments), provide manual redirect
         if (error.name === 'SecurityError' || error.message?.includes('permission')) {
-          console.log('SecurityError detected, opening Stripe checkout in new tab...');
-          try {
-            // Open Stripe checkout in new tab (required for Replit environment)
-            const checkoutUrl = `https://checkout.stripe.com/c/pay/${data.sessionId}`;
-            const newWindow = window.open(checkoutUrl, '_blank');
-            if (newWindow) {
-              // Show user-friendly message
-              toast({
-                title: "Redirecting to Payment",
-                description: "Opening Stripe checkout in a new tab. Complete your payment there and return to this page.",
-                variant: "default",
-              });
-              return; // Don't show error if tab opened successfully
-            } else {
-              throw new Error('Unable to open payment page. Please enable popups and try again.');
-            }
-          } catch (navError) {
-            console.error('New tab fallback failed:', navError);
-          }
+          console.log('SecurityError detected, providing manual redirect option...');
+          
+          // Show user-friendly message with manual redirect option
+          const checkoutUrl = `https://checkout.stripe.com/c/pay/${data.sessionId}`;
+          toast({
+            title: "Payment Redirect Required",
+            description: "Due to browser security restrictions, please click the button below to complete your payment.",
+            variant: "default",
+          });
+          
+          // Store the checkout URL for the user to click
+          setCheckoutUrl(checkoutUrl);
+          setIsProcessing(false);
+          return;
         }
         
         console.error('Stripe redirect error:', error.message);
@@ -382,6 +378,28 @@ export default function Checkout() {
                   `Complete Payment - ${currency === 'EGP' ? 'EGP' : '$'}${selectedPackage?.price || 0}`
                 )}
               </Button>
+
+              {/* Manual Redirect for Replit Environment */}
+              {checkoutUrl && (
+                <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
+                  <CardContent className="p-4 text-center space-y-3">
+                    <div className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                      Complete Your Payment
+                    </div>
+                    <p className="text-sm text-blue-700 dark:text-blue-200">
+                      Click the button below to open Stripe checkout and complete your payment securely.
+                    </p>
+                    <Button 
+                      size="lg" 
+                      className="w-full"
+                      onClick={() => window.open(checkoutUrl, '_blank')}
+                      data-testid="button-manual-stripe-redirect"
+                    >
+                      Open Stripe Checkout
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Security Notice */}
               <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
