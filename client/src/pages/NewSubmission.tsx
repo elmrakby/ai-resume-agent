@@ -125,13 +125,34 @@ export default function NewSubmission() {
         throw new Error(cvError);
       }
 
-      // TODO: Implement file upload to UploadThing or similar service
-      // For now, we'll create the submission without file URLs
+      // Upload files first
+      let cvFileUrl: string | undefined;
+      let coverLetterFileUrl: string | undefined;
+
+      if (cvFile || coverLetterFile) {
+        const formData = new FormData();
+        if (cvFile) {
+          formData.append('cv', cvFile);
+        }
+        if (coverLetterFile) {
+          formData.append('coverLetter', coverLetterFile);
+        }
+
+        const uploadResponse = await apiRequest("POST", "/api/upload", formData);
+        const uploadResult = await uploadResponse.json();
+
+        if (uploadResult.files) {
+          cvFileUrl = uploadResult.files.cv ? `/api/files/${uploadResult.files.cv}` : undefined;
+          coverLetterFileUrl = uploadResult.files.coverLetter ? `/api/files/${uploadResult.files.coverLetter}` : undefined;
+        }
+      }
+
+      // Create submission with uploaded file URLs
       const submissionData = {
         ...data,
         orderId,
-        cvFileUrl: cvFile ? `temp-cv-${Date.now()}.${cvFile.name.split('.').pop()}` : undefined,
-        coverLetterFileUrl: coverLetterFile ? `temp-cover-${Date.now()}.${coverLetterFile.name.split('.').pop()}` : undefined,
+        cvFileUrl,
+        coverLetterFileUrl,
       };
 
       const response = await apiRequest("POST", API_ENDPOINTS.SUBMISSIONS, submissionData);
@@ -297,23 +318,20 @@ export default function NewSubmission() {
                   <div 
                     className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
                     onClick={() => {
-                      console.log('Dropzone clicked for CV');
                       const fileInput = document.getElementById('cv-file') as HTMLInputElement;
                       if (fileInput) {
-                        console.log('Triggering file input click');
                         fileInput.click();
-                      } else {
-                        console.error('CV file input not found');
                       }
-                    }}
-                    onTouchStart={() => {
-                      console.log('Dropzone touch started for CV');
                     }}
                     data-testid="dropzone-cv"
                   >
                     <UploadCloud className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                     <p className="text-foreground font-medium mb-2">
-                      {cvFile ? cvFile.name : "Drop your CV here or click to browse"}
+                      {cvFile ? (
+                        <span className="text-accent">✓ {cvFile.name}</span>
+                      ) : (
+                        "Drop your CV here or click to browse"
+                      )}
                     </p>
                     <p className="text-sm text-muted-foreground">PDF, DOC, DOCX up to 10MB</p>
                     <input
@@ -338,23 +356,20 @@ export default function NewSubmission() {
                   <div 
                     className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
                     onClick={() => {
-                      console.log('Dropzone clicked for cover letter');
                       const fileInput = document.getElementById('cover-letter-file') as HTMLInputElement;
                       if (fileInput) {
-                        console.log('Triggering cover letter file input click');
                         fileInput.click();
-                      } else {
-                        console.error('Cover letter file input not found');
                       }
-                    }}
-                    onTouchStart={() => {
-                      console.log('Dropzone touch started for cover letter');
                     }}
                     data-testid="dropzone-cover-letter"
                   >
                     <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                     <p className="text-foreground font-medium mb-2">
-                      {coverLetterFile ? coverLetterFile.name : "Drop your cover letter here or click to browse"}
+                      {coverLetterFile ? (
+                        <span className="text-accent">✓ {coverLetterFile.name}</span>
+                      ) : (
+                        "Drop your cover letter here or click to browse"
+                      )}
                     </p>
                     <p className="text-sm text-muted-foreground">PDF, DOC, DOCX up to 10MB</p>
                     <input

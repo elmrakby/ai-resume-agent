@@ -5,6 +5,9 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertOrderSchema, insertSubmissionSchema, PACKAGE_CONFIG } from "@shared/schema";
 import { z } from "zod";
 import Stripe from "stripe";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   console.warn('STRIPE_SECRET_KEY not found. Stripe payments will not work.');
@@ -13,6 +16,41 @@ if (!process.env.STRIPE_SECRET_KEY) {
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2025-08-27.basil",
 }) : null;
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure multer for file uploads
+const storage_multer = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir);
+  },
+  filename: function (req, file, cb) {
+    // Create unique filename with timestamp and original extension
+    const uniqueId = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, `${file.fieldname}-${uniqueId}${ext}`);
+  }
+});
+
+const upload = multer({ 
+  storage: storage_multer,
+  fileFilter: (req, file, cb) => {
+    // Allow PDF, DOC, DOCX files
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PDF, DOC, and DOCX files are allowed.'));
+    }
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  }
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -44,6 +82,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       inferredGateway,
       ip: req.ip || req.connection.remoteAddress
     });
+  });
+
+  // File upload endpoint
+  app.post('/api/upload', isAuthenticated, upload.fields([
+    { name: 'cv', maxCount: 1 },
+    { name: 'coverLetter', maxCount: 1 }
+  ]), (req: any, res) => {
+    try {
+      const uploadedFiles: { cv?: string; coverLetter?: string } = {};
+      
+      if (req.files) {
+        if (req.files.cv && req.files.cv[0]) {
+          uploadedFiles.cv = req.files.cv[0].filename;
+        }
+        if (req.files.coverLetter && req.files.coverLetter[0]) {
+          uploadedFiles.coverLetter = req.files.coverLetter[0].filename;
+        }
+      }
+      
+      res.json({
+        message: 'Files uploaded successfully',
+        files: uploadedFiles
+      });
+    } catch (error: any) {
+      console.error('File upload error:', error);
+      res.status(500).json({ message: 'File upload failed: ' + error.message });
+    }
+  });
+
+  // File serving endpoint
+  app.get('/api/files/:filename', isAuthenticated, (req, res) => {
+    const filename = req.params.filename;
+    const filepath = path.join(uploadsDir, filename);
+    
+    // Security check - ensure file exists and is within uploads directory
+    if (!fs.existsSync(filepath) || !filepath.startsWith(uploadsDir)) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+    
+    res.sendFile(filepath);
   });
 
   // Package pricing API
