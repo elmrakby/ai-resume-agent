@@ -8,7 +8,7 @@ import Stripe from "stripe";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { uploadFile, getFileUrl, deleteFile } from "./supabase";
+import { uploadFile, getFileUrl, deleteFile, supabaseAdmin, STORAGE_BUCKET } from "./supabase";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   console.warn('STRIPE_SECRET_KEY not found. Stripe payments will not work.');
@@ -65,6 +65,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       inferredGateway,
       ip: req.ip || req.connection.remoteAddress
     });
+  });
+
+  // Storage status check API
+  app.get('/api/storage/status', async (req, res) => {
+    try {
+      const { data: buckets, error } = await supabaseAdmin.storage.listBuckets();
+      
+      if (error) {
+        return res.json({
+          available: false,
+          error: 'Storage service unavailable',
+          message: 'Please contact support if file uploads are needed.'
+        });
+      }
+
+      const bucketExists = buckets?.some(bucket => bucket.name === STORAGE_BUCKET);
+      
+      res.json({
+        available: bucketExists,
+        bucketName: STORAGE_BUCKET,
+        message: bucketExists 
+          ? 'File storage is ready' 
+          : `Storage bucket '${STORAGE_BUCKET}' needs to be created in Supabase dashboard`
+      });
+    } catch (error) {
+      res.json({
+        available: false,
+        error: 'Storage check failed',
+        message: 'Please contact support if file uploads are needed.'
+      });
+    }
   });
 
   // File upload endpoint (using Supabase Storage)

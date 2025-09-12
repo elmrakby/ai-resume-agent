@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useStorageStatus } from "@/hooks/useStorageStatus";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 import { API_ENDPOINTS, ROUTES } from "@/lib/constants";
@@ -42,6 +43,7 @@ export default function NewSubmission() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: storageStatus, isLoading: storageLoading } = useStorageStatus();
   
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [coverLetterFile, setCoverLetterFile] = useState<File | null>(null);
@@ -79,6 +81,11 @@ export default function NewSubmission() {
 
   // File validation using Supabase helpers
   const validateFile = (file: File | null, required = false): string => {
+    // If storage is not available, don't require files
+    if (!storageStatus?.available) {
+      return "";
+    }
+    
     if (!file && required) {
       return "CV file is required";
     }
@@ -303,28 +310,66 @@ export default function NewSubmission() {
 
               {/* File Uploads */}
               <div className="space-y-6">
+                {/* File upload status warning */}
+                {!storageLoading && storageStatus && !storageStatus.available && (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.178 2.625-1.516 2.625H3.72c-1.337 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                          File Upload Temporarily Unavailable
+                        </h3>
+                        <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                          <p>{storageStatus.message}</p>
+                          <p className="mt-1">You can still submit your request, but you'll need to provide your files later via email.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* CV Upload */}
                 <div>
-                  <Label>Current CV/Resume *</Label>
+                  <Label>Current CV/Resume {storageStatus?.available ? '*' : '(Optional - upload disabled)'}</Label>
                   <div 
-                    className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                    className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+                      storageStatus?.available 
+                        ? 'border-border hover:border-primary/50 cursor-pointer' 
+                        : 'border-muted-foreground/30 bg-muted/20 cursor-not-allowed'
+                    }`}
                     onClick={() => {
-                      const fileInput = document.getElementById('cv-file') as HTMLInputElement;
-                      if (fileInput) {
-                        fileInput.click();
+                      if (storageStatus?.available) {
+                        const fileInput = document.getElementById('cv-file') as HTMLInputElement;
+                        if (fileInput) {
+                          fileInput.click();
+                        }
                       }
                     }}
                     data-testid="dropzone-cv"
                   >
-                    <UploadCloud className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-foreground font-medium mb-2">
-                      {cvFile ? (
+                    <UploadCloud className={`w-12 h-12 mx-auto mb-4 ${
+                      storageStatus?.available ? 'text-muted-foreground' : 'text-muted-foreground/50'
+                    }`} />
+                    <p className={`font-medium mb-2 ${
+                      storageStatus?.available ? 'text-foreground' : 'text-muted-foreground'
+                    }`}>
+                      {!storageStatus?.available ? (
+                        "File upload temporarily disabled"
+                      ) : cvFile ? (
                         <span className="text-accent">✓ {cvFile.name}</span>
                       ) : (
                         "Drop your CV here or click to browse"
                       )}
                     </p>
-                    <p className="text-sm text-muted-foreground">PDF, DOC, DOCX up to 10MB</p>
+                    <p className={`text-sm ${
+                      storageStatus?.available ? 'text-muted-foreground' : 'text-muted-foreground/70'
+                    }`}>
+                      {storageStatus?.available ? 'PDF, DOC, DOCX up to 10MB' : 'Contact support to enable file uploads'}
+                    </p>
                     <input
                       id="cv-file"
                       type="file"
@@ -332,6 +377,7 @@ export default function NewSubmission() {
                       accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.doc,.docx"
                       onChange={(e) => handleFileChange(e, 'cv')}
                       data-testid="input-cv-file"
+                      disabled={!storageStatus?.available}
                     />
                   </div>
                   {cvFileError && (

@@ -63,6 +63,26 @@ export async function uploadFile(
   file: Express.Multer.File
 ): Promise<{ success: boolean; path?: string; error?: string }> {
   try {
+    // Check if bucket exists first
+    const { data: buckets, error: listError } = await supabaseAdmin.storage.listBuckets();
+    
+    if (listError) {
+      console.error('Cannot access Supabase storage:', listError);
+      return { 
+        success: false, 
+        error: 'Storage service unavailable. Please contact support.' 
+      };
+    }
+
+    const bucketExists = buckets?.some(bucket => bucket.name === STORAGE_BUCKET);
+    if (!bucketExists) {
+      console.error(`Storage bucket '${STORAGE_BUCKET}' does not exist`);
+      return { 
+        success: false, 
+        error: 'File storage is not configured. Please contact support to enable file uploads.' 
+      };
+    }
+
     const filePath = `${userId}/${submissionId}/${Date.now()}-${file.originalname}`;
     
     const { data, error } = await supabaseAdmin.storage
@@ -75,13 +95,29 @@ export async function uploadFile(
 
     if (error) {
       console.error('Supabase upload error:', error);
-      return { success: false, error: error.message };
+      
+      // Provide user-friendly error messages
+      if (error.message?.includes('row-level security') || error.message?.includes('policy')) {
+        return { 
+          success: false, 
+          error: 'File upload permissions not configured. Please contact support.' 
+        };
+      }
+      
+      return { 
+        success: false, 
+        error: `Upload failed: ${error.message}` 
+      };
     }
 
+    console.log('File uploaded successfully:', data.path);
     return { success: true, path: data.path };
   } catch (error) {
     console.error('Upload file error:', error);
-    return { success: false, error: 'Failed to upload file' };
+    return { 
+      success: false, 
+      error: 'Upload service temporarily unavailable. Please try again later.' 
+    };
   }
 }
 
