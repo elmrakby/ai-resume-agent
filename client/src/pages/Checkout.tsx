@@ -38,7 +38,6 @@ const loadStripe = async () => {
     throw new Error('Invalid Stripe publishable key (expect pk_test_ or pk_live_)');
   }
   
-  console.log('Using Stripe key:', publicKey.substring(0, 12) + '...');
   
   const stripe = (window as any).Stripe(publicKey);
   if (!stripe) {
@@ -115,66 +114,22 @@ export default function Checkout() {
       return response.json();
     },
     onSuccess: async (data) => {
-      console.log('Checkout success data:', data);
-      
       try {
         // Load Stripe and redirect to checkout
-        console.log('Loading Stripe...');
         const stripe = await loadStripe();
-        console.log('Stripe loaded successfully:', !!stripe);
-        
-        console.log('Session ID received:', data.sessionId);
         
         if (stripe && data.sessionId) {
-          console.log('Attempting Stripe redirect...');
+          const result = await stripe.redirectToCheckout({ sessionId: data.sessionId });
           
-          // Try the standard Stripe redirect first, but catch security errors
-          try {
-            const result = await stripe.redirectToCheckout({ sessionId: data.sessionId });
-            console.log('Stripe redirect result:', result);
-            
-            if (result?.error) {
-              console.error('Stripe error details:', result.error);
-              throw new Error(result.error.message || 'Stripe redirect failed');
-            }
-          } catch (securityError: any) {
-            // If we get a SecurityError (iframe restrictions), use direct navigation
-            if (securityError.name === 'SecurityError' || securityError.message?.includes('permission')) {
-              console.log('SecurityError detected, using direct navigation to Stripe checkout...');
-              const checkoutUrl = `https://checkout.stripe.com/c/pay/${data.sessionId}`;
-              
-              // Try window.top first (for iframe environments), fallback to window.location
-              try {
-                if (window.top && window.top !== window) {
-                  window.top.location.href = checkoutUrl;
-                } else {
-                  window.location.href = checkoutUrl;
-                }
-              } catch (topError) {
-                // Final fallback: open in new tab
-                console.log('Using new tab fallback...');
-                const newWindow = window.open(checkoutUrl, '_blank');
-                if (!newWindow) {
-                  throw new Error('Unable to redirect to Stripe checkout. Please enable popups and try again.');
-                }
-              }
-            } else {
-              // Re-throw non-security errors
-              throw securityError;
-            }
+          if (result?.error) {
+            throw new Error(result.error.message || 'Stripe redirect failed');
           }
         } else {
           const errorMsg = !stripe ? "Unable to initialize Stripe" : "Missing session ID";
-          console.error('Stripe/SessionID error:', errorMsg, { stripe: !!stripe, sessionId: data.sessionId });
           throw new Error(errorMsg);
         }
       } catch (error: any) {
-        console.error('Stripe redirect error details:', {
-          message: error.message,
-          name: error.name,
-          stack: error.stack,
-          error: error
-        });
+        console.error('Stripe redirect error:', error.message);
         toast({
           title: "Payment Error",
           description: error.message || "Unable to process payment. Please try again.",
