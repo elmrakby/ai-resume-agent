@@ -188,10 +188,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get the correct base URL from request headers
       const protocol = req.headers['x-forwarded-proto'] || 'http';
-      const host = req.headers.host || 'localhost:5000';
+      let host = req.headers.host || 'localhost:5000';
+      
+      // Normalize Replit host: remove per-instance segment like "-00-pebjqi0c7ux9" 
+      // This ensures Stripe redirects work even after server restarts/hot reloads
+      host = host.replace(/-\d{2}-[a-z0-9]+(\.)/i, '$1');
+      
       const baseUrl = `${protocol}://${host}`;
       
-      console.log('Stripe checkout URLs - Base URL:', baseUrl);
+      console.log('Stripe checkout URLs - Base URL (normalized):', baseUrl);
 
       // Create Stripe checkout session
       const session = await stripe.checkout.sessions.create({
