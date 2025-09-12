@@ -112,16 +112,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // File serving endpoint
-  app.get('/api/files/:filename', isAuthenticated, (req, res) => {
+  app.get('/api/files/:filename', isAuthenticated, async (req: any, res) => {
     const filename = req.params.filename;
     const filepath = path.join(uploadsDir, filename);
+    const userId = req.user.claims.sub;
     
     // Security check - ensure file exists and is within uploads directory
     if (!fs.existsSync(filepath) || !filepath.startsWith(uploadsDir)) {
       return res.status(404).json({ message: 'File not found' });
     }
     
-    res.sendFile(filepath);
+    try {
+      // Check if user owns this file by looking at submissions
+      const userSubmissions = await storage.getUserSubmissions(userId);
+      const ownsFile = userSubmissions.some(submission => 
+        submission.cvFileUrl?.includes(filename) || 
+        submission.coverLetterFileUrl?.includes(filename)
+      );
+      
+      if (!ownsFile) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      res.sendFile(filepath);
+    } catch (error) {
+      console.error('Error checking file ownership:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
   });
 
   // Package pricing API

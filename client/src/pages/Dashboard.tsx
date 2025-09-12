@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { API_ENDPOINTS, ROUTES } from "@/lib/constants";
-import { ShoppingCart, FileText, CheckCircle } from "lucide-react";
+import { ShoppingCart, FileText, CheckCircle, Eye, Download } from "lucide-react";
 import type { Order, Submission, DashboardStats } from "@/lib/types";
 
 export default function Dashboard() {
@@ -257,6 +257,7 @@ export default function Dashboard() {
                         <th className="text-left py-3 px-4 font-medium text-muted-foreground">Role Target</th>
                         <th className="text-left py-3 px-4 font-medium text-muted-foreground">Language</th>
                         <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
+                        <th className="text-left py-3 px-4 font-medium text-muted-foreground">Files</th>
                         <th className="text-left py-3 px-4 font-medium text-muted-foreground">Date</th>
                       </tr>
                     </thead>
@@ -272,6 +273,37 @@ export default function Dashboard() {
                             <Badge variant={getStatusBadgeVariant(submission.status)} data-testid={`badge-submission-status-${submission.id}`}>
                               {submission.status}
                             </Badge>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center space-x-2">
+                              {submission.cvFileUrl && (
+                                <a
+                                  href={submission.cvFileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center space-x-1 text-primary hover:text-primary/80 text-sm"
+                                  data-testid={`link-cv-${submission.id}`}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                  <span>CV</span>
+                                </a>
+                              )}
+                              {submission.coverLetterFileUrl && (
+                                <a
+                                  href={submission.coverLetterFileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center space-x-1 text-primary hover:text-primary/80 text-sm"
+                                  data-testid={`link-cover-letter-${submission.id}`}
+                                >
+                                  <FileText className="w-4 h-4" />
+                                  <span>CL</span>
+                                </a>
+                              )}
+                              {!submission.cvFileUrl && !submission.coverLetterFileUrl && (
+                                <span className="text-muted-foreground text-sm">-</span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3 px-4 text-sm text-muted-foreground">
                             {new Date(submission.createdAt).toLocaleDateString()}
