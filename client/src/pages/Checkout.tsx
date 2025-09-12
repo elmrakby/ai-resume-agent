@@ -34,12 +34,20 @@ export default function Checkout() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   
-  // Get plan from URL params
-  const urlParams = new URLSearchParams(location.split('?')[1] || '');
-  const planParam = urlParams.get('plan')?.toUpperCase();
-  const [selectedPlan, setSelectedPlan] = useState(
-    PACKAGE_PLANS.includes(planParam as any) ? planParam : 'STANDARD'
-  );
+  // Get plan from URL params and set selected plan
+  const [selectedPlan, setSelectedPlan] = useState('STANDARD');
+  
+  // Update selected plan whenever location changes
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const planParam = params.get('plan')?.toUpperCase();
+    
+    if (planParam && PACKAGE_PLANS.includes(planParam as any)) {
+      setSelectedPlan(planParam);
+    } else {
+      setSelectedPlan('STANDARD');
+    }
+  }, [location]);
   
   const [selectedGateway, setSelectedGateway] = useState<'stripe' | 'paymob'>('stripe');
   const [isProcessing, setIsProcessing] = useState(false);
