@@ -129,16 +129,26 @@ export default function Checkout() {
           throw new Error(errorMsg);
         }
       } catch (error: any) {
-        // If we get a SecurityError (common in iframe environments), try direct navigation
+        // If we get a SecurityError (common in iframe/Replit environments), open in new tab
         if (error.name === 'SecurityError' || error.message?.includes('permission')) {
-          console.log('SecurityError detected, using direct window navigation...');
+          console.log('SecurityError detected, opening Stripe checkout in new tab...');
           try {
-            // Direct navigation to Stripe checkout URL
+            // Open Stripe checkout in new tab (required for Replit environment)
             const checkoutUrl = `https://checkout.stripe.com/c/pay/${data.sessionId}`;
-            window.location.href = checkoutUrl;
-            return; // Don't show error if navigation succeeds
+            const newWindow = window.open(checkoutUrl, '_blank');
+            if (newWindow) {
+              // Show user-friendly message
+              toast({
+                title: "Redirecting to Payment",
+                description: "Opening Stripe checkout in a new tab. Complete your payment there and return to this page.",
+                variant: "default",
+              });
+              return; // Don't show error if tab opened successfully
+            } else {
+              throw new Error('Unable to open payment page. Please enable popups and try again.');
+            }
           } catch (navError) {
-            console.error('Navigation fallback failed:', navError);
+            console.error('New tab fallback failed:', navError);
           }
         }
         
