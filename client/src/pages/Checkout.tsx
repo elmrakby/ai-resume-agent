@@ -122,9 +122,14 @@ export default function Checkout() {
     },
     onSuccess: async (data) => {
       try {
-        // Load Stripe and redirect to checkout
-        const stripe = await loadStripe();
+        // For Replit environments, use direct navigation to avoid SecurityError
+        if (data.url) {
+          window.location.href = data.url;
+          return;
+        }
         
+        // Fallback to Stripe.js method for other environments
+        const stripe = await loadStripe();
         if (stripe && data.sessionId) {
           const result = await stripe.redirectToCheckout({ sessionId: data.sessionId });
           
@@ -141,15 +146,14 @@ export default function Checkout() {
           console.log('SecurityError detected, providing manual redirect option...');
           
           // Show user-friendly message with manual redirect option
-          const checkoutUrl = `https://checkout.stripe.com/c/pay/${data.sessionId}`;
           toast({
             title: "Payment Redirect Required",
             description: "Due to browser security restrictions, please click the button below to complete your payment.",
             variant: "default",
           });
           
-          // Store the checkout URL for the user to click
-          setCheckoutUrl(checkoutUrl);
+          // Store the official Stripe checkout URL
+          setCheckoutUrl(data.url);
           setIsProcessing(false);
           return;
         }
