@@ -18,6 +18,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 import { API_ENDPOINTS, ROUTES } from "@/lib/constants";
 import { UploadCloud, FileText } from "lucide-react";
+import { validateFile as validateFileSupabase } from "@/lib/supabase";
 
 const submissionSchema = z.object({
   roleTarget: z.string().min(1, "Target role is required"),
@@ -76,25 +77,15 @@ export default function NewSubmission() {
     }
   }, [isAuthenticated, authLoading, toast]);
 
-  // File validation
+  // File validation using Supabase helpers
   const validateFile = (file: File | null, required = false): string => {
     if (!file && required) {
       return "CV file is required";
     }
     if (!file) return "";
     
-    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    
-    if (!allowedTypes.includes(file.type)) {
-      return "File must be PDF, DOC, or DOCX format";
-    }
-    
-    if (file.size > maxSize) {
-      return "File size must be less than 10MB";
-    }
-    
-    return "";
+    const validation = validateFileSupabase(file);
+    return validation.valid ? "" : validation.error || "";
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, type: 'cv' | 'coverLetter') => {

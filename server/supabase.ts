@@ -18,11 +18,18 @@ export const STORAGE_BUCKET = 'uploads';
 export async function initializeStorage() {
   try {
     // Check if bucket exists
-    const { data: buckets } = await supabaseAdmin.storage.listBuckets();
+    const { data: buckets, error: listError } = await supabaseAdmin.storage.listBuckets();
+    
+    if (listError) {
+      console.warn('Could not list storage buckets:', listError.message);
+      console.log('Storage bucket may need to be created manually in Supabase dashboard');
+      return;
+    }
+
     const bucketExists = buckets?.some(bucket => bucket.name === STORAGE_BUCKET);
 
     if (!bucketExists) {
-      // Create bucket with public read access
+      // Try to create bucket but handle permission errors gracefully
       const { error } = await supabaseAdmin.storage.createBucket(STORAGE_BUCKET, {
         public: false, // Keep private for security
         allowedMimeTypes: [
@@ -34,13 +41,18 @@ export async function initializeStorage() {
       });
 
       if (error) {
-        console.error('Error creating storage bucket:', error);
+        console.warn('Could not create storage bucket automatically:', error.message);
+        console.log('Please create the "uploads" bucket manually in your Supabase dashboard');
+        console.log('Make sure to set it as private and allow the required MIME types');
       } else {
         console.log('Storage bucket created successfully');
       }
+    } else {
+      console.log('Storage bucket already exists');
     }
   } catch (error) {
-    console.error('Error initializing storage:', error);
+    console.warn('Error initializing storage:', error);
+    console.log('File upload functionality may not work until the storage bucket is created');
   }
 }
 

@@ -8,6 +8,7 @@ import Stripe from "stripe";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { uploadFile, getFileUrl, deleteFile } from "./supabase";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   console.warn('STRIPE_SECRET_KEY not found. Stripe payments will not work.');
@@ -17,27 +18,9 @@ const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SEC
   apiVersion: "2025-08-27.basil",
 }) : null;
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Configure multer for file uploads
-const storage_multer = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadsDir);
-  },
-  filename: function (req, file, cb) {
-    // Create unique filename with timestamp and original extension
-    const uniqueId = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, `${file.fieldname}-${uniqueId}${ext}`);
-  }
-});
-
+// Configure multer for file uploads (using memory storage for Supabase)
 const upload = multer({ 
-  storage: storage_multer,
+  storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
     // Allow PDF, DOC, DOCX files
     const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
@@ -84,26 +67,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // File upload endpoint
+  // File upload endpoint (using Supabase Storage)
   app.post('/api/upload', isAuthenticated, upload.fields([
     { name: 'cv', maxCount: 1 },
     { name: 'coverLetter', maxCount: 1 }
-  ]), (req: any, res) => {
+  ]), async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const submissionId = req.body.submissionId || 'temp-' + Date.now();
       const uploadedFiles: { cv?: string; coverLetter?: string } = {};
       
       if (req.files) {
+        // Upload CV file to Supabase
         if (req.files.cv && req.files.cv[0]) {
-          uploadedFiles.cv = req.files.cv[0].filename;
+          const cvFile = req.files.cv[0];
+          const cvResult = await uploadFile(userId, submissionId, cvFile);
+          if (cvResult.success && cvResult.path) {
+            uploadedFiles.cv = cvResult.path;
+          } else {
+            throw new Error(cvResult.error || 'Failed to upload CV');
+          }
         }
+        
+        // Upload cover letter file to Supabase
         if (req.files.coverLetter && req.files.coverLetter[0]) {
-          uploadedFiles.coverLetter = req.files.coverLetter[0].filename;
+          const coverLetterFile = req.files.coverLetter[0];
+          const coverResult = await uploadFile(userId, submissionId, coverLetterFile);
+          if (coverResult.success && coverResult.path) {
+            uploadedFiles.coverLetter = coverResult.path;
+          } else {
+            throw new Error(coverResult.error || 'Failed to upload cover letter');
+          }
         }
       }
       
       res.json({
         message: 'Files uploaded successfully',
-        files: uploadedFiles
+        files: uploadedFiles,
+        submissionId
       });
     } catch (error: any) {
       console.error('File upload error:', error);
@@ -111,32 +112,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // File serving endpoint
-  app.get('/api/files/:filename', isAuthenticated, async (req: any, res) => {
-    const filename = req.params.filename;
-    const filepath = path.join(uploadsDir, filename);
+  // File serving endpoint (using Supabase Storage)
+  app.get('/api/files/:filepath(*)', isAuthenticated, async (req: any, res) => {
+    const filePath = req.params.filepath;
     const userId = req.user.claims.sub;
     
-    // Security check - ensure file exists and is within uploads directory
-    if (!fs.existsSync(filepath) || !filepath.startsWith(uploadsDir)) {
-      return res.status(404).json({ message: 'File not found' });
+    // Validate file path format (should be userId/submissionId/filename)
+    if (!filePath.startsWith(`${userId}/`)) {
+      return res.status(403).json({ message: 'Access denied' });
     }
     
     try {
-      // Check if user owns this file by looking at submissions
-      const userSubmissions = await storage.getUserSubmissions(userId);
-      const ownsFile = userSubmissions.some(submission => 
-        submission.cvFileUrl?.includes(filename) || 
-        submission.coverLetterFileUrl?.includes(filename)
-      );
+      // Get signed URL from Supabase
+      const signedUrl = await getFileUrl(filePath);
       
-      if (!ownsFile) {
-        return res.status(403).json({ message: 'Access denied' });
+      if (!signedUrl) {
+        return res.status(404).json({ message: 'File not found' });
       }
       
-      res.sendFile(filepath);
+      // Redirect to signed URL
+      res.redirect(signedUrl);
     } catch (error) {
-      console.error('Error checking file ownership:', error);
+      console.error('Error serving file:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   });
