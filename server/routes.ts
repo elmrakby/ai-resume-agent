@@ -186,12 +186,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ip: req.ip
       });
 
+      // Get the correct base URL from request headers
+      const protocol = req.headers['x-forwarded-proto'] || 'http';
+      const host = req.headers.host || 'localhost:5000';
+      const baseUrl = `${protocol}://${host}`;
+      
+      console.log('Stripe checkout URLs - Base URL:', baseUrl);
+
       // Create Stripe checkout session
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         mode: 'payment',
-        success_url: successUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:5000'}/order/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:5000'}/order/cancel`,
+        success_url: successUrl || `${baseUrl}/order/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: cancelUrl || `${baseUrl}/order/cancel`,
         metadata: {
           orderId: order.id,
           userId,
