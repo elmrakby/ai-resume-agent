@@ -228,11 +228,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update order with session ID
       await storage.updateOrderStatus(order.id, 'PENDING', session.id);
 
-      res.json({ 
+      // Debug logging
+      console.log('Stripe session created:', {
+        id: session.id,
+        url: session.url,
+        mode: session.mode,
+        status: session.status
+      });
+
+      const responseData = { 
         sessionId: session.id,
         url: session.url,
         orderId: order.id 
-      });
+      };
+      console.log('Sending response:', responseData);
+
+      res.json(responseData);
     } catch (error: any) {
       console.error('Stripe checkout error:', error);
       res.status(500).json({ message: 'Error creating checkout session: ' + error.message });
