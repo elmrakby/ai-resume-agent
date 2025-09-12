@@ -127,20 +127,41 @@ export default function Checkout() {
         
         if (stripe && data.sessionId) {
           console.log('Attempting Stripe redirect...');
-          const result = await stripe.redirectToCheckout({ sessionId: data.sessionId });
-          console.log('Stripe redirect result:', result);
           
-          if (result?.error) {
-            console.error('Stripe error details:', {
-              toString: String(result.error),
-              message: result.error.message,
-              type: (result.error as any).type,
-              code: (result.error as any).code,
-              props: Object.getOwnPropertyNames(result.error),
-              userAgent: navigator.userAgent,
-              location: window.location.href
-            });
-            throw new Error(result.error.message || 'Stripe redirect failed');
+          // Try the standard Stripe redirect first, but catch security errors
+          try {
+            const result = await stripe.redirectToCheckout({ sessionId: data.sessionId });
+            console.log('Stripe redirect result:', result);
+            
+            if (result?.error) {
+              console.error('Stripe error details:', result.error);
+              throw new Error(result.error.message || 'Stripe redirect failed');
+            }
+          } catch (securityError: any) {
+            // If we get a SecurityError (iframe restrictions), use direct navigation
+            if (securityError.name === 'SecurityError' || securityError.message?.includes('permission')) {
+              console.log('SecurityError detected, using direct navigation to Stripe checkout...');
+              const checkoutUrl = `https://checkout.stripe.com/c/pay/${data.sessionId}`;
+              
+              // Try window.top first (for iframe environments), fallback to window.location
+              try {
+                if (window.top && window.top !== window) {
+                  window.top.location.href = checkoutUrl;
+                } else {
+                  window.location.href = checkoutUrl;
+                }
+              } catch (topError) {
+                // Final fallback: open in new tab
+                console.log('Using new tab fallback...');
+                const newWindow = window.open(checkoutUrl, '_blank');
+                if (!newWindow) {
+                  throw new Error('Unable to redirect to Stripe checkout. Please enable popups and try again.');
+                }
+              }
+            } else {
+              // Re-throw non-security errors
+              throw securityError;
+            }
           }
         } else {
           const errorMsg = !stripe ? "Unable to initialize Stripe" : "Missing session ID";
