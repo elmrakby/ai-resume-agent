@@ -98,6 +98,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Diagnostic endpoint to help troubleshoot Supabase connection
+  app.get('/api/supabase/diagnostic', async (req, res) => {
+    try {
+      const { data: buckets, error } = await supabaseAdmin.storage.listBuckets();
+      
+      if (error) {
+        return res.json({
+          error: 'Cannot access Supabase storage',
+          details: error.message
+        });
+      }
+
+      // Get URL host to verify which project we're connected to
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const urlHost = supabaseUrl ? new URL(supabaseUrl).hostname : 'not configured';
+      
+      res.json({
+        status: 'connected',
+        project: urlHost,
+        availableBuckets: buckets?.map(b => b.name) || [],
+        lookingFor: STORAGE_BUCKET
+      });
+    } catch (error) {
+      res.json({
+        error: 'Diagnostic failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // File upload endpoint (using Supabase Storage)
   app.post('/api/upload', isAuthenticated, upload.fields([
     { name: 'cv', maxCount: 1 },

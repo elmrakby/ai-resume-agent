@@ -1,8 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Server-side Supabase client with admin privileges
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('Missing required Supabase configuration:');
+  console.error('- SUPABASE_URL:', supabaseUrl ? 'configured' : 'MISSING');
+  console.error('- SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? 'configured' : 'MISSING');
+  console.error('Please set both environment variables from your Supabase dashboard');
+  throw new Error('Supabase configuration incomplete');
+}
 
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
