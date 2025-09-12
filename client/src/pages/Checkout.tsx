@@ -14,6 +14,21 @@ import { apiRequest } from "@/lib/queryClient";
 import { API_ENDPOINTS, PACKAGE_PLANS } from "@/lib/constants";
 import type { Package, GeoResponse, CheckoutFormData } from "@/lib/types";
 
+// Load Stripe.js dynamically
+const loadStripe = async () => {
+  if (!(window as any).Stripe) {
+    const script = document.createElement('script');
+    script.src = 'https://js.stripe.com/v3/';
+    script.async = true;
+    document.head.appendChild(script);
+    
+    await new Promise((resolve) => {
+      script.onload = resolve;
+    });
+  }
+  return (window as any).Stripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+};
+
 export default function Checkout() {
   const [location] = useLocation();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -72,19 +87,27 @@ export default function Checkout() {
       const response = await apiRequest("POST", API_ENDPOINTS.STRIPE_CHECKOUT, data);
       return response.json();
     },
-    onSuccess: (data) => {
-      // Redirect to Stripe checkout
-      const stripe = (window as any).Stripe?.(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
-      if (stripe && data.sessionId) {
-        stripe.redirectToCheckout({ sessionId: data.sessionId });
-      } else {
+    onSuccess: async (data) => {
+      try {
+        // Load Stripe and redirect to checkout
+        const stripe = await loadStripe();
+        if (stripe && data.sessionId) {
+          const result = await stripe.redirectToCheckout({ sessionId: data.sessionId });
+          if (result.error) {
+            throw new Error(result.error.message);
+          }
+        } else {
+          throw new Error("Unable to initialize Stripe or missing session ID");
+        }
+      } catch (error: any) {
+        console.error('Stripe redirect error:', error);
         toast({
-          title: "Error",
-          description: "Unable to initialize Stripe. Please try again.",
+          title: "Payment Error",
+          description: error.message || "Unable to process payment. Please try again.",
           variant: "destructive",
         });
+        setIsProcessing(false);
       }
-      setIsProcessing(false);
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -318,9 +341,6 @@ export default function Checkout() {
         </div>
       </main>
       <Footer />
-      
-      {/* Load Stripe.js */}
-      <script src="https://js.stripe.com/v3/"></script>
     </div>
   );
 }

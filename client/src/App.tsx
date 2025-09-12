@@ -22,6 +22,11 @@ function Router() {
 
   return (
     <Switch>
+      {/* Public routes - always available */}
+      <Route path={ROUTES.CHECKOUT} component={Checkout} />
+      <Route path={ROUTES.ORDER_SUCCESS} component={OrderSuccess} />
+      <Route path={ROUTES.ORDER_CANCEL} component={OrderCancel} />
+      
       {isLoading || !isAuthenticated ? (
         <>
           <Route path={ROUTES.HOME} component={Landing} />
@@ -35,11 +40,6 @@ function Router() {
           <Route path={ROUTES.NEW_SUBMISSION} component={NewSubmission} />
         </>
       )}
-      
-      {/* Public routes */}
-      <Route path={ROUTES.CHECKOUT} component={Checkout} />
-      <Route path={ROUTES.ORDER_SUCCESS} component={OrderSuccess} />
-      <Route path={ROUTES.ORDER_CANCEL} component={OrderCancel} />
       
       {/* Fallback to 404 */}
       <Route component={NotFound} />
