@@ -301,7 +301,7 @@ export default function NewSubmission() {
                       id="cv-file"
                       type="file"
                       className="hidden"
-                      accept=".pdf,.doc,.docx"
+                      accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.doc,.docx"
                       onChange={(e) => handleFileChange(e, 'cv')}
                       data-testid="input-cv-file"
                     />
@@ -330,7 +330,7 @@ export default function NewSubmission() {
                       id="cover-letter-file"
                       type="file"
                       className="hidden"
-                      accept=".pdf,.doc,.docx"
+                      accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.doc,.docx"
                       onChange={(e) => handleFileChange(e, 'coverLetter')}
                       data-testid="input-cover-letter-file"
                     />
