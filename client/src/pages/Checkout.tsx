@@ -122,13 +122,25 @@ export default function Checkout() {
     },
     onSuccess: async (data) => {
       console.log('Stripe checkout response:', data);
+      
+      // For Replit/iframe environments, always use new tab approach
+      if (data.url) {
+        console.log('Opening Stripe checkout in new tab:', data.url);
+        
+        // Show user-friendly message
+        toast({
+          title: "Opening Payment Page",
+          description: "Payment page is opening in a new tab. Please complete your payment there.",
+          variant: "default",
+        });
+        
+        // Open in new tab - this works better in Replit
+        window.open(data.url, '_blank', 'noopener,noreferrer');
+        setIsProcessing(false);
+        return;
+      }
+
       try {
-        // For Replit environments, use direct navigation to avoid SecurityError
-        if (data.url) {
-          console.log('Attempting direct navigation to:', data.url);
-          window.location.href = data.url;
-          return;
-        }
         
         // Fallback to Stripe.js method for other environments
         const stripe = await loadStripe();
