@@ -111,7 +111,13 @@ export default function Checkout() {
   // Stripe checkout mutation
   const stripeCheckoutMutation = useMutation({
     mutationFn: async (data: CheckoutFormData) => {
-      const response = await apiRequest("POST", API_ENDPOINTS.STRIPE_CHECKOUT, data);
+      // Include client origin URLs to ensure Stripe redirects work
+      const requestData = {
+        ...data,
+        successUrl: `${window.location.origin}/order/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${window.location.origin}/order/cancel`,
+      };
+      const response = await apiRequest("POST", API_ENDPOINTS.STRIPE_CHECKOUT, requestData);
       return response.json();
     },
     onSuccess: async (data) => {

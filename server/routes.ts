@@ -164,7 +164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const { plan, successUrl, cancelUrl } = req.body;
+      const { plan, successUrl: clientSuccessUrl, cancelUrl: clientCancelUrl } = req.body;
       const userId = req.user.claims.sub;
 
       // Validate plan
@@ -186,24 +186,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ip: req.ip
       });
 
-      // Get the correct base URL from request headers
+      // Get the correct base URL from request headers (use raw host)
       const protocol = req.headers['x-forwarded-proto'] || 'http';
-      let host = req.headers.host || 'localhost:5000';
-      
-      // Normalize Replit host: remove per-instance segment like "-00-pebjqi0c7ux9" 
-      // This ensures Stripe redirects work even after server restarts/hot reloads
-      host = host.replace(/-\d{2}-[a-z0-9]+(\.)/i, '$1');
-      
+      const host = req.headers.host || 'localhost:5000';
       const baseUrl = `${protocol}://${host}`;
       
-      console.log('Stripe checkout URLs - Base URL (normalized):', baseUrl);
+      // Use client-provided URLs or fallback to server-computed ones
+      const successUrl = clientSuccessUrl || `${baseUrl}/order/success?session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = clientCancelUrl || `${baseUrl}/order/cancel`;
+      
+      console.log('Stripe checkout URLs - Base URL (raw host):', baseUrl);
+      console.log('Stripe checkout URLs - Success URL (final):', successUrl);
+      console.log('Stripe checkout URLs - Cancel URL (final):', cancelUrl);
 
       // Create Stripe checkout session
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         mode: 'payment',
-        success_url: successUrl || `${baseUrl}/order/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: cancelUrl || `${baseUrl}/order/cancel`,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
         metadata: {
           orderId: order.id,
           userId,
