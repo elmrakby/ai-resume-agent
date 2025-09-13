@@ -21,15 +21,6 @@ import NotFound from "@/pages/not-found";
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Check if we're at root with OAuth code (Google redirects here)
-  const urlParams = new URLSearchParams(window.location.search);
-  const hasOAuthCode = urlParams.has('code');
-  
-  // If we're at root with OAuth code, show the callback handler
-  if (window.location.pathname === '/' && hasOAuthCode) {
-    return <AuthCallback />;
-  }
-
   return (
     <Switch>
       {/* Auth callback - always available */}

@@ -41,6 +41,16 @@ app.use((req, res, next) => {
   // Initialize Supabase storage
   await initializeStorage();
   
+  // Handle OAuth callbacks that land on root path
+  app.get('/', (req, res, next) => {
+    const hasOAuthParams = req.query.code || req.query.error || req.query.error_code;
+    if (hasOAuthParams) {
+      const qs = new URLSearchParams(req.query as Record<string, string>).toString();
+      return res.redirect(`/auth/callback${qs ? `?${qs}` : ''}`);
+    }
+    return next();
+  });
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
