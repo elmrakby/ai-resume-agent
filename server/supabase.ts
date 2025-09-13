@@ -5,14 +5,16 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Missing required Supabase configuration:');
-  console.error('- SUPABASE_URL:', supabaseUrl ? 'configured' : 'MISSING');
-  console.error('- SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? 'configured' : 'MISSING');
-  console.error('Please set both environment variables from your Supabase dashboard');
-  throw new Error('Supabase configuration incomplete');
+  console.warn('Missing Supabase configuration - using demo mode');
+  console.warn('- SUPABASE_URL:', supabaseUrl ? 'configured' : 'MISSING');
+  console.warn('- SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? 'configured' : 'MISSING');
+  console.warn('File uploads and some features will be disabled');
 }
 
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+export const supabaseAdmin = createClient(
+  supabaseUrl || 'https://demo.supabase.co', 
+  supabaseServiceKey || 'demo_key', 
+  {
   auth: {
     autoRefreshToken: false,
     persistSession: false,

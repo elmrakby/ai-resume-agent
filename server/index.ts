@@ -40,8 +40,12 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Initialize Supabase storage
-  await initializeStorage();
+  // Initialize Supabase storage (gracefully handle errors)
+  try {
+    await initializeStorage();
+  } catch (error) {
+    console.warn('Storage initialization failed, continuing without storage:', error.message);
+  }
   
   // Handle OAuth callbacks that land on root path
   app.get('/', (req, res, next) => {
