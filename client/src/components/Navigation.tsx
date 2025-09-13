@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Zap, Menu } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { AuthPopup } from "@/components/AuthPopup";
 import { ROUTES } from "@/lib/constants";
 
 export default function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isAuthPopupOpen, setIsAuthPopupOpen] = useState(false);
   const [location] = useLocation();
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, signOut } = useAuth();
 
   const navItems = [
     { href: ROUTES.HOME, label: "Home" },
@@ -87,7 +89,7 @@ export default function Navigation() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => window.location.href = '/api/logout'}
+                  onClick={() => signOut()}
                   data-testid="button-logout"
                 >
                   Logout
@@ -97,13 +99,13 @@ export default function Navigation() {
               <>
                 <Button
                   variant="ghost"
-                  onClick={() => window.location.href = '/api/login'}
+                  onClick={() => setIsAuthPopupOpen(true)}
                   data-testid="button-signin"
                 >
                   Sign In
                 </Button>
                 <Button
-                  onClick={() => window.location.href = '/api/login'}
+                  onClick={() => setIsAuthPopupOpen(true)}
                   data-testid="button-get-started"
                 >
                   Get Started
@@ -152,7 +154,10 @@ export default function Navigation() {
                     <Button
                       variant="ghost"
                       className="w-full justify-start"
-                      onClick={() => window.location.href = '/api/logout'}
+                      onClick={() => {
+                        signOut();
+                        setIsMobileMenuOpen(false);
+                      }}
                     >
                       Logout
                     </Button>
@@ -162,13 +167,19 @@ export default function Navigation() {
                     <Button
                       variant="ghost"
                       className="w-full justify-start"
-                      onClick={() => window.location.href = '/api/login'}
+                      onClick={() => {
+                        setIsAuthPopupOpen(true);
+                        setIsMobileMenuOpen(false);
+                      }}
                     >
                       Sign In
                     </Button>
                     <Button
                       className="w-full"
-                      onClick={() => window.location.href = '/api/login'}
+                      onClick={() => {
+                        setIsAuthPopupOpen(true);
+                        setIsMobileMenuOpen(false);
+                      }}
                     >
                       Get Started
                     </Button>
@@ -179,6 +190,13 @@ export default function Navigation() {
           </Sheet>
         </div>
       </div>
+      
+      {/* Auth Popup */}
+      <AuthPopup
+        isOpen={isAuthPopupOpen}
+        onClose={() => setIsAuthPopupOpen(false)}
+        onSuccess={() => setIsAuthPopupOpen(false)}
+      />
     </nav>
   );
 }

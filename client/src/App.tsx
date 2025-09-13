@@ -15,6 +15,7 @@ import Dashboard from "@/pages/Dashboard";
 import NewSubmission from "@/pages/NewSubmission";
 import OrderSuccess from "@/pages/OrderSuccess";
 import OrderCancel from "@/pages/OrderCancel";
+import AuthCallback from "@/pages/AuthCallback";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -26,6 +27,7 @@ function Router() {
       <Route path={ROUTES.CHECKOUT} component={Checkout} />
       <Route path={ROUTES.ORDER_SUCCESS} component={OrderSuccess} />
       <Route path={ROUTES.ORDER_CANCEL} component={OrderCancel} />
+      <Route path="/auth/callback" component={AuthCallback} />
       
       {isLoading || !isAuthenticated ? (
         <>
