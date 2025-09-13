@@ -21,6 +21,22 @@ import NotFound from "@/pages/not-found";
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
+  // Check if we're processing an OAuth callback
+  const urlParams = new URLSearchParams(window.location.search);
+  const hasOAuthCode = urlParams.has('code');
+
+  // Show loading state during OAuth processing
+  if (hasOAuthCode && isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground">Completing authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Switch>
       {/* Public routes - always available */}

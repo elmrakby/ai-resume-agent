@@ -9,12 +9,39 @@ export function useAuth() {
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
 
   useEffect(() => {
+    // Check if we're in an OAuth callback (has code parameter)
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasOAuthCode = urlParams.has('code');
+    
+    // If there's an OAuth code, extend loading time to allow Supabase to process it
+    if (hasOAuthCode) {
+      const timer = setTimeout(() => {
+        if (isLoading) {
+          // If still loading after 3 seconds, clean up URL and continue
+          const url = new URL(window.location.href);
+          url.searchParams.delete('code');
+          window.history.replaceState({}, '', url.toString());
+          setIsLoading(false);
+        }
+      }, 3000);
+      
+      // Cleanup timer on unmount
+      return () => clearTimeout(timer);
+    }
+
     // Get initial session
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setSupabaseUser(session.user);
         await syncUserData(session.user);
+        
+        // If we had an OAuth code, clean up the URL now that we have a session
+        if (hasOAuthCode) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('code');
+          window.history.replaceState({}, '', url.toString());
+        }
       }
       setIsLoading(false);
     };
