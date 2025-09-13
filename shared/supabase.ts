@@ -8,10 +8,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Supabase credentials not found. File upload will be disabled.');
 }
 
-// Create Supabase client
+// Create Supabase client (server-side, minimal auth config)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: false, // We handle auth separately
+    persistSession: false,
+    autoRefreshToken: false,
   },
 });
 

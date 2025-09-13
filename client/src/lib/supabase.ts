@@ -11,7 +11,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Create client-side Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: false, // We handle auth separately
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce'
   },
 });
 
