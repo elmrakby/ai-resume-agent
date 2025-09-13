@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupSupabaseAuth, verifySupabaseToken, requireAuth, type AuthenticatedRequest } from "./supabaseAuth";
 import { insertOrderSchema, insertSubmissionSchema, PACKAGE_CONFIG } from "@shared/schema";
 import { z } from "zod";
 import Stripe from "stripe";
@@ -37,13 +37,15 @@ const upload = multer({
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
-  await setupAuth(app);
+  setupSupabaseAuth(app);
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', verifySupabaseToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const user = await storage.getUser(req.user.id);
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -129,7 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // File upload endpoint (using Supabase Storage)
-  app.post('/api/upload', isAuthenticated, upload.fields([
+  app.post('/api/upload', verifySupabaseToken, requireAuth, upload.fields([
     { name: 'cv', maxCount: 1 },
     { name: 'coverLetter', maxCount: 1 }
   ]), async (req: any, res) => {
@@ -174,7 +176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // File serving endpoint (using Supabase Storage)
-  app.get('/api/files/:filepath(*)', isAuthenticated, async (req: any, res) => {
+  app.get('/api/files/:filepath(*)', verifySupabaseToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     const filePath = req.params.filepath;
     const userId = req.user.claims.sub;
     
@@ -216,7 +218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Stripe checkout
-  app.post('/api/stripe/checkout', isAuthenticated, async (req: any, res) => {
+  app.post('/api/stripe/checkout', verifySupabaseToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     if (!stripe) {
       return res.status(500).json({ message: 'Stripe not configured' });
     }
@@ -349,7 +351,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Paymob checkout (stub implementation)
-  app.post('/api/paymob/checkout', isAuthenticated, async (req: any, res) => {
+  app.post('/api/paymob/checkout', verifySupabaseToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { plan } = req.body;
       const userId = req.user.claims.sub;
@@ -398,7 +400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Orders API
-  app.get('/api/orders', isAuthenticated, async (req: any, res) => {
+  app.get('/api/orders', verifySupabaseToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user.claims.sub;
       const orders = await storage.getUserOrders(userId);
@@ -409,7 +411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/orders/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/orders/:id', verifySupabaseToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       const userId = req.user.claims.sub;
@@ -427,7 +429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Submissions API
-  app.get('/api/submissions', isAuthenticated, async (req: any, res) => {
+  app.get('/api/submissions', verifySupabaseToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user.claims.sub;
       const submissions = await storage.getUserSubmissions(userId);
@@ -438,7 +440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/submissions', isAuthenticated, async (req: any, res) => {
+  app.post('/api/submissions', verifySupabaseToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertSubmissionSchema.parse({
@@ -458,7 +460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/submissions/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/submissions/:id', verifySupabaseToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       const userId = req.user.claims.sub;
