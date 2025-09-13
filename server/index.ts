@@ -20,18 +20,20 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+    // Log all requests (not just /api) to debug OAuth flow
+    let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+    if (req.query && Object.keys(req.query).length > 0) {
+      logLine += ` query=${JSON.stringify(req.query)}`;
     }
+    if (capturedJsonResponse && path.startsWith("/api")) {
+      logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+    }
+
+    if (logLine.length > 200) {
+      logLine = logLine.slice(0, 199) + "…";
+    }
+
+    log(logLine);
   });
 
   next();
@@ -44,9 +46,12 @@ app.use((req, res, next) => {
   // Handle OAuth callbacks that land on root path
   app.get('/', (req, res, next) => {
     const hasOAuthParams = req.query.code || req.query.error || req.query.error_code;
+    console.log(`[OAuth Debug] Root request: ${req.url}, hasOAuthParams: ${!!hasOAuthParams}`);
     if (hasOAuthParams) {
       const qs = new URLSearchParams(req.query as Record<string, string>).toString();
-      return res.redirect(`/auth/callback${qs ? `?${qs}` : ''}`);
+      const redirectUrl = `/auth/callback${qs ? `?${qs}` : ''}`;
+      console.log(`[OAuth Debug] Redirecting to: ${redirectUrl}`);
+      return res.redirect(redirectUrl);
     }
     return next();
   });
