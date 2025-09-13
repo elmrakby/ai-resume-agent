@@ -51,9 +51,19 @@ export function useAuth() {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
+        
         if (session?.user) {
           setSupabaseUser(session.user);
           await syncUserData(session.user);
+          
+          // Clear URL params after successful sign-in to prevent caching issues
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.has('code')) {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('code');
+            window.history.replaceState({}, '', url.toString());
+          }
         } else {
           setSupabaseUser(null);
           setUser(null);
