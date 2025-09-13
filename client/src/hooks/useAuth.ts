@@ -10,14 +10,8 @@ export function useAuth() {
 
   useEffect(() => {
     let mounted = true;
-    
-    // Check if we're in an OAuth callback (has code parameter)
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasOAuthCode = urlParams.has('code');
-    
-    console.log('useAuth: initializing, hasOAuthCode:', hasOAuthCode);
 
-    // Get initial session with proper error handling
+    // Get initial session
     const getSession = async () => {
       try {
         console.log('useAuth: getting session...');
@@ -32,14 +26,6 @@ export function useAuth() {
         if (session?.user && mounted) {
           setSupabaseUser(session.user);
           await syncUserData(session.user);
-          
-          // If we had an OAuth code, clean up the URL now that we have a session
-          if (hasOAuthCode) {
-            console.log('useAuth: cleaning up OAuth URL');
-            const url = new URL(window.location.href);
-            url.searchParams.delete('code');
-            window.history.replaceState({}, '', url.toString());
-          }
         }
         
         if (mounted) {
@@ -53,15 +39,7 @@ export function useAuth() {
       }
     };
 
-    // For OAuth callbacks, give Supabase more time to process
-    if (hasOAuthCode) {
-      console.log('useAuth: OAuth callback detected, waiting...');
-      setTimeout(() => {
-        if (mounted) getSession();
-      }, 1000); // Wait 1 second for Supabase to process the OAuth callback
-    } else {
-      getSession();
-    }
+    getSession();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -71,14 +49,6 @@ export function useAuth() {
         if (session?.user && mounted) {
           setSupabaseUser(session.user);
           await syncUserData(session.user);
-          
-          // Clear URL params after successful sign-in to prevent caching issues
-          const urlParams = new URLSearchParams(window.location.search);
-          if (urlParams.has('code')) {
-            const url = new URL(window.location.href);
-            url.searchParams.delete('code');
-            window.history.replaceState({}, '', url.toString());
-          }
         } else if (mounted) {
           setSupabaseUser(null);
           setUser(null);

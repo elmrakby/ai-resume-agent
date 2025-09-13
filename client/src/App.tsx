@@ -21,29 +21,15 @@ import NotFound from "@/pages/not-found";
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Check if we're processing an OAuth callback
-  const urlParams = new URLSearchParams(window.location.search);
-  const hasOAuthCode = urlParams.has('code');
-
-  // Show loading state during OAuth processing
-  if (hasOAuthCode && isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">Completing authentication...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <Switch>
+      {/* Auth callback - always available and processed first */}
+      <Route path="/auth/callback" component={AuthCallback} />
+      
       {/* Public routes - always available */}
       <Route path={ROUTES.CHECKOUT} component={Checkout} />
       <Route path={ROUTES.ORDER_SUCCESS} component={OrderSuccess} />
       <Route path={ROUTES.ORDER_CANCEL} component={OrderCancel} />
-      <Route path="/auth/callback" component={AuthCallback} />
       
       {isLoading || !isAuthenticated ? (
         <>

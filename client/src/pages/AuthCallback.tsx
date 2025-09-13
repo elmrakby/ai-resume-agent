@@ -11,61 +11,53 @@ export default function AuthCallback() {
     const handleAuthCallback = async () => {
       try {
         console.log("AuthCallback: Processing OAuth callback...");
+        console.log("AuthCallback: Current URL:", window.location.href);
         
-        // Check if there's a code in the URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
+        // Wait a moment for Supabase to process the session from URL
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        if (code) {
-          console.log("AuthCallback: Found OAuth code, exchanging for session...");
+        // Check for session after Supabase processes the URL
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("AuthCallback: Session error:", error);
+          toast({
+            title: "Authentication Error", 
+            description: error.message || "Failed to complete authentication.",
+            variant: "destructive",
+          });
+          setLocation("/");
+          return;
+        }
+
+        if (data.session?.user) {
+          console.log("AuthCallback: Session found for user:", data.session.user.id);
+          toast({
+            title: "Welcome!",
+            description: "You've successfully signed in.",
+          });
           
-          // Explicitly exchange the code for a session
-          const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+          // Clean up the URL and redirect
+          window.history.replaceState({}, '', '/');
+          setLocation("/");
+        } else {
+          console.log("AuthCallback: No session found, redirecting to home");
           
-          if (error) {
-            console.error("AuthCallback: Code exchange error:", error);
+          // Check URL params for any error information
+          const urlParams = new URLSearchParams(window.location.search);
+          const errorCode = urlParams.get('error_code');
+          const errorDescription = urlParams.get('error_description');
+          
+          if (errorCode) {
+            console.error("AuthCallback: OAuth error:", errorCode, errorDescription);
             toast({
-              title: "Authentication Error", 
-              description: error.message || "Failed to complete authentication.",
+              title: "Authentication Error",
+              description: errorDescription || "Authentication failed.",
               variant: "destructive",
             });
-            setLocation("/");
-            return;
           }
-
-          if (data.session) {
-            console.log("AuthCallback: Session created successfully");
-            toast({
-              title: "Welcome!",
-              description: "You've successfully signed in.",
-            });
-            
-            // Clean up the URL and redirect
-            window.history.replaceState({}, '', '/');
-            setLocation("/");
-          } else {
-            console.log("AuthCallback: No session created");
-            setLocation("/");
-          }
-        } else {
-          console.log("AuthCallback: No OAuth code found, checking existing session...");
           
-          // Fallback: check for existing session
-          const { data, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error("AuthCallback: Session check error:", error);
-            setLocation("/");
-            return;
-          }
-
-          if (data.session) {
-            console.log("AuthCallback: Existing session found");
-            setLocation("/");
-          } else {
-            console.log("AuthCallback: No session found");
-            setLocation("/");
-          }
+          setLocation("/");
         }
       } catch (error) {
         console.error("AuthCallback: Unexpected error:", error);
