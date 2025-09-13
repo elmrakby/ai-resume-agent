@@ -10,32 +10,70 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
+        console.log("AuthCallback: Processing OAuth callback...");
         
-        if (error) {
-          console.error("Auth callback error:", error);
-          toast({
-            title: "Authentication Error",
-            description: error.message || "Failed to complete authentication.",
-            variant: "destructive",
-          });
-          setLocation("/");
-          return;
-        }
+        // Check if there's a code in the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        
+        if (code) {
+          console.log("AuthCallback: Found OAuth code, exchanging for session...");
+          
+          // Explicitly exchange the code for a session
+          const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+          
+          if (error) {
+            console.error("AuthCallback: Code exchange error:", error);
+            toast({
+              title: "Authentication Error", 
+              description: error.message || "Failed to complete authentication.",
+              variant: "destructive",
+            });
+            setLocation("/");
+            return;
+          }
 
-        if (data.session) {
-          toast({
-            title: "Welcome!",
-            description: "You've successfully signed in.",
-          });
-          // Redirect to dashboard or home page
-          setLocation("/");
+          if (data.session) {
+            console.log("AuthCallback: Session created successfully");
+            toast({
+              title: "Welcome!",
+              description: "You've successfully signed in.",
+            });
+            
+            // Clean up the URL and redirect
+            window.history.replaceState({}, '', '/');
+            setLocation("/");
+          } else {
+            console.log("AuthCallback: No session created");
+            setLocation("/");
+          }
         } else {
-          // No session found, redirect to home
-          setLocation("/");
+          console.log("AuthCallback: No OAuth code found, checking existing session...");
+          
+          // Fallback: check for existing session
+          const { data, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error("AuthCallback: Session check error:", error);
+            setLocation("/");
+            return;
+          }
+
+          if (data.session) {
+            console.log("AuthCallback: Existing session found");
+            setLocation("/");
+          } else {
+            console.log("AuthCallback: No session found");
+            setLocation("/");
+          }
         }
       } catch (error) {
-        console.error("Unexpected error during auth callback:", error);
+        console.error("AuthCallback: Unexpected error:", error);
+        toast({
+          title: "Authentication Error",
+          description: "An unexpected error occurred during authentication.",
+          variant: "destructive",
+        });
         setLocation("/");
       }
     };
