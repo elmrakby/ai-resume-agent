@@ -136,7 +136,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     { name: 'coverLetter', maxCount: 1 }
   ]), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const submissionId = req.body.submissionId || 'temp-' + Date.now();
       const uploadedFiles: { cv?: string; coverLetter?: string } = {};
       
@@ -178,7 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // File serving endpoint (using Supabase Storage)
   app.get('/api/files/:filepath(*)', verifySupabaseToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     const filePath = req.params.filepath;
-    const userId = req.user.claims.sub;
+    const userId = req.user.id;
     
     // Validate file path format (should be userId/submissionId/filename)
     if (!filePath.startsWith(`${userId}/`)) {
@@ -225,7 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const { plan, successUrl: clientSuccessUrl, cancelUrl: clientCancelUrl } = req.body;
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
 
       // Validate plan
       if (!PACKAGE_CONFIG[plan as keyof typeof PACKAGE_CONFIG]) {
@@ -354,7 +354,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/paymob/checkout', verifySupabaseToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { plan } = req.body;
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
 
       // Validate plan
       if (!PACKAGE_CONFIG[plan as keyof typeof PACKAGE_CONFIG]) {
@@ -402,7 +402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Orders API
   app.get('/api/orders', verifySupabaseToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const orders = await storage.getUserOrders(userId);
       res.json(orders);
     } catch (error) {
@@ -414,7 +414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/orders/:id', verifySupabaseToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       const order = await storage.getOrder(id);
       if (!order || order.userId !== userId) {
@@ -431,7 +431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Submissions API
   app.get('/api/submissions', verifySupabaseToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const submissions = await storage.getUserSubmissions(userId);
       res.json(submissions);
     } catch (error) {
@@ -442,7 +442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/submissions', verifySupabaseToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertSubmissionSchema.parse({
         ...req.body,
         userId
@@ -463,7 +463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/submissions/:id', verifySupabaseToken, requireAuth, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       const submission = await storage.getSubmission(id);
       if (!submission || submission.userId !== userId) {

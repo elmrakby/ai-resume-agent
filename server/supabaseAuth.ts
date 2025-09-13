@@ -76,26 +76,6 @@ export function setupSupabaseAuth(app: Express) {
     res.json({ status: 'ok', provider: 'supabase' });
   });
 
-  // Webhook endpoint for Supabase auth events (optional, for future use)
-  app.post('/api/auth/webhook', async (req, res) => {
-    try {
-      const { event, session, user } = req.body;
-      
-      if (event === 'SIGNED_IN' && user) {
-        // Sync user data when they sign in
-        await storage.upsertUser({
-          id: user.id,
-          email: user.email,
-          firstName: user.user_metadata?.first_name || user.user_metadata?.full_name?.split(' ')[0] || '',
-          lastName: user.user_metadata?.last_name || user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
-          profileImageUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
-        });
-      }
-      
-      res.status(200).json({ received: true });
-    } catch (error) {
-      console.error("Auth webhook error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+  // Note: User data syncing is handled automatically by the verifySupabaseToken middleware
+  // No webhook endpoint needed since we sync users on each authenticated request
 }
